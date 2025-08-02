@@ -1,0 +1,6 @@
+gradio
+transformers
+unsloth
+torch
+librosa
+soundfile
