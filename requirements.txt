@@ -1,6 +1,5 @@
-gradio
-transformers
-unsloth
-torch
+streamlit
+torch==2.2.0
+transformers==4.37.0
 librosa
 soundfile
