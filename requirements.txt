@@ -3,3 +3,4 @@ torch
 transformers
 librosa
 soundfile
+tokenizers
