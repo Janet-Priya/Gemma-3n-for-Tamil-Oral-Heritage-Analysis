@@ -1,26 +1,27 @@
 import streamlit as st
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 import librosa
 import tempfile
 import os
 
 st.set_page_config(page_title="Tamil Oral Literature ASR + Summary Demo (CPU)")
-
 st.title("Tamil Oral Literature ASR + Summarizer Demo (CPU)")
 
 @st.cache_resource(show_spinner=False)
 def load_models():
-    # Load Whisper ASR pipeline on CPU
+    # Load Whisper ASR pipeline (CPU)
     asr = pipeline(
         "automatic-speech-recognition",
         model="openai/whisper-small",
         device=-1  # CPU
     )
-    # Load CPU-friendly summarization pipeline (multilingual)
+    # Load summarization model and tokenizer with use_fast=False to avoid tokenizer errors
+    tokenizer = AutoTokenizer.from_pretrained("google/mt5-small", use_fast=False)
+    model = AutoModelForSeq2SeqLM.from_pretrained("google/mt5-small")
     summarizer = pipeline(
         "summarization",
-        model="google/mt5-small",
-        tokenizer="google/mt5-small",
+        model=model,
+        tokenizer=tokenizer,
         device=-1  # CPU
     )
     return asr, summarizer
@@ -40,7 +41,7 @@ if uploaded_audio is not None:
         tmp_file.write(uploaded_audio.read())
         tmp_filepath = tmp_file.name
 
-    # Load and resample audio to 16kHz (Whisper expects 16kHz)
+    # Load and resample audio to 16 kHz as expected by Whisper
     audio_array, original_sr = librosa.load(tmp_filepath, sr=None)
     audio_16k = librosa.resample(audio_array, orig_sr=original_sr, target_sr=16000)
 
@@ -67,5 +68,5 @@ if uploaded_audio is not None:
         st.subheader("Summary")
         st.write(summary)
 
-    # Clean up temp file
+    # Clean up temporary file
     os.remove(tmp_filepath)
