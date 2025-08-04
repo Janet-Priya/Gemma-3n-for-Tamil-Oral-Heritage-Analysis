@@ -1,72 +1,30 @@
 import streamlit as st
-from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
-import librosa
 import tempfile
 import os
 
-st.set_page_config(page_title="Tamil Oral Literature ASR + Summary Demo (CPU)")
-st.title("Tamil Oral Literature ASR + Summarizer Demo (CPU)")
+from gemma3n_utils import transcribe_audio, summarize_text
 
-@st.cache_resource(show_spinner=False)
-def load_models():
-    # Load Whisper ASR pipeline (CPU)
-    asr = pipeline(
-        "automatic-speech-recognition",
-        model="openai/whisper-small",
-        device=-1  # CPU
-    )
-    # Load summarization model and tokenizer with use_fast=False to avoid tokenizer errors
-    tokenizer = AutoTokenizer.from_pretrained("google/mt5-small", use_fast=False)
-    model = AutoModelForSeq2SeqLM.from_pretrained("google/mt5-small")
-    summarizer = pipeline(
-        "summarization",
-        model=model,
-        tokenizer=tokenizer,
-        device=-1  # CPU
-    )
-    return asr, summarizer
+st.title("Tamil ASR and Literary Summarization with Gemma 3n")
 
-asr, summarizer = load_models()
+audio_file = st.file_uploader("Upload Tamil audio (*.wav, *.flac, *.mp3)", type=["wav", "flac", "mp3"])
 
-st.markdown("""
-Upload a Tamil speech audio file (.wav or .mp3). The app will transcribe the speech and generate a short summary.
+if audio_file is not None:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
+        temp_audio.write(audio_file.read())
+        temp_path = temp_audio.name
 
-*Note:* This demo runs fully on CPU and uses a small summarization model as a proxy for Gemma 3n.
-""")
+    st.audio(temp_path)
 
-uploaded_audio = st.file_uploader("Upload Tamil Audio", type=["wav", "mp3"])
-
-if uploaded_audio is not None:
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".tmp") as tmp_file:
-        tmp_file.write(uploaded_audio.read())
-        tmp_filepath = tmp_file.name
-
-    # Load and resample audio to 16 kHz as expected by Whisper
-    audio_array, original_sr = librosa.load(tmp_filepath, sr=None)
-    audio_16k = librosa.resample(audio_array, orig_sr=original_sr, target_sr=16000)
-
-    with st.spinner("Transcribing audio with Whisper..."):
-        asr_result = asr(audio_16k)
-        transcript = asr_result.get("text", "").strip()
-
+    with st.spinner("Transcribing..."):
+        transcription = transcribe_audio(temp_path)
     st.subheader("Transcription")
-    if transcript:
-        st.write(transcript)
-    else:
-        st.write("No speech detected or transcription failed.")
+    st.write(transcription)
 
-    if transcript:
-        with st.spinner("Generating summary with mT5..."):
-            summary_result = summarizer(
-                transcript,
-                max_length=80,
-                min_length=15,
-                do_sample=False
-            )
-            summary = summary_result[0]["summary_text"]
-
-        st.subheader("Summary")
-        st.write(summary)
-
-    # Clean up temporary file
-    os.remove(tmp_filepath)
+    with st.spinner("Summarizing..."):
+        summary = summarize_text(transcription)
+    st.subheader("Summary")
+    st.write(summary)
+#
+    os.remove(temp_path)
+else:
+    st.info("Please upload a Tamil audio file.")

@@ -1,8 +1,6 @@
-streamlit==1.37.0
+streamlit
 torch
 transformers
-librosa
-soundfile
-tokenizers
-sentencepiece
-
+torchaudio
+accelerate
+timm
