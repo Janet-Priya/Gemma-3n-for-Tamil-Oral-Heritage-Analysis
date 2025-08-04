@@ -9,7 +9,7 @@ HF_TOKEN = os.environ.get("HF_TOKEN")
 if HF_TOKEN is None:
     sys.stderr.write("Warning: HF_TOKEN not set, model loading may fail for gated models.\n")
 
-GEMMA_MODEL_ID = "google/gemma-3n-E2B"
+GEMMA_MODEL_ID = "google/gemma-3n-E4B-it"
 
 # Load processor and model (no manual .to(device) used)
 processor = AutoProcessor.from_pretrained(GEMMA_MODEL_ID, token=HF_TOKEN)
