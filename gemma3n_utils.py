@@ -3,6 +3,7 @@ import sys
 import torch
 import torchaudio
 from transformers import AutoProcessor, AutoModelForImageTextToText
+from accelerate import disk_offload
 
 # Get HF token from environment variable (set as secret in Spaces for security)
 HF_TOKEN = os.environ.get("HF_TOKEN")
@@ -16,10 +17,11 @@ processor = AutoProcessor.from_pretrained(GEMMA_MODEL_ID, token=HF_TOKEN)
 model = AutoModelForImageTextToText.from_pretrained(
     GEMMA_MODEL_ID,
     torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-    device_map="auto",
     token=HF_TOKEN
 )
-# DO NOT CALL model.to(device) here!
+model = AutoModelForImageTextToText.from_pretrained(...)  # without device_map
+model = disk_offload(model, offload_dir="./your_offload_folder")
+
 
 def transcribe_audio(audio_path):
     waveform, sample_rate = torchaudio.load(audio_path)
