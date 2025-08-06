@@ -55,7 +55,7 @@ def deeper_analysis(text):
 
 
 
-
+'''
 
 import torch
 import torchaudio
@@ -98,22 +98,3 @@ def translate_to_english(tamil_text):
 def deeper_analysis(english_text):
     summary = summarizer(english_text, max_length=100, min_length=30, do_sample=False)[0]['summary_text']
     return summary
-'''
-from transformers import AutoTokenizer, AutoModelForCausalLM
-
-# Load Gemma model for translation/analysis
-tokenizer_gemma = AutoTokenizer.from_pretrained("google/gemma-2b-it")
-model_gemma = AutoModelForCausalLM.from_pretrained("google/gemma-2b-it").to("cuda" if torch.cuda.is_available() else "cpu")
-
-def gemma_generate(prompt):
-    inputs = tokenizer_gemma(prompt, return_tensors="pt").to(model_gemma.device)
-    outputs = model_gemma.generate(**inputs, max_new_tokens=100)
-    return tokenizer_gemma.decode(outputs[0], skip_special_tokens=True)
-
-def translate_to_english(tamil_text):
-    prompt = f"Translate the following Tamil text to English:\n{tamil_text}\nTranslation:"
-    return gemma_generate(prompt)
-
-def deeper_analysis(english_text):
-    prompt = f"Give a deep analysis of the following statement:\n{english_text}\nAnalysis:"
-    return gemma_generate(prompt)
