@@ -22,9 +22,6 @@ iface = gr.Interface(
 
 iface.launch(server_name="0.0.0.0", server_port=7860)
 
-'''
-
-
 import gradio as gr
 from gemma3n_utils import transcribe_audio, translate_to_english, deeper_analysis
 import os
@@ -72,3 +69,56 @@ with gr.Blocks() as app:
     )
 
 app.launch()
+'''
+
+
+# app.py
+import gradio as gr
+import os
+from gemma3n_utils import transcribe_audio, translate_to_english, deeper_analysis
+import torchaudio
+
+def process_audio(audio):
+    if audio is None:
+        return "No audio provided", "", ""
+
+    print("Audio received:", audio)
+
+    if isinstance(audio, tuple):
+        audio_np, sample_rate = audio
+    else:
+        audio_path = audio if isinstance(audio, str) else audio.name
+        audio_np, sample_rate = torchaudio.load(audio_path)
+
+    # Transcribe
+    transcription = transcribe_audio(audio_np.numpy(), sample_rate)
+
+    # Translate
+    translation = translate_to_english(transcription)
+
+    # Deeper Analysis
+    analysis = deeper_analysis(translation)
+
+    return transcription, translation, analysis
+
+# UI
+custom_css = """
+footer {visibility: hidden}
+h1 {text-align: center;}
+.gradio-container {font-family: 'Segoe UI', sans-serif; background-color: #f5f5f5;}
+"""
+
+with gr.Blocks(css=custom_css) as interface:
+    gr.Markdown("# 🎧 Tamil Audio Translator + Analyzer")
+    with gr.Row():
+        audio_input = gr.Audio(source="microphone", type="numpy", label="🎙️ Record or Upload Audio")
+    with gr.Row():
+        trans_output = gr.Textbox(label="📝 Transcription (Tamil)", lines=2)
+        trans_en_output = gr.Textbox(label="🌐 Translated (English)", lines=2)
+    with gr.Row():
+        analysis_output = gr.Textbox(label="🧠 Deeper Analysis", lines=4)
+
+    submit_btn = gr.Button("Process Audio")
+    submit_btn.click(fn=process_audio, inputs=[audio_input], outputs=[trans_output, trans_en_output, analysis_output])
+
+interface.launch(share=True)
