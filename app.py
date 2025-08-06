@@ -111,7 +111,7 @@ h1 {text-align: center;}
 with gr.Blocks(css=custom_css) as interface:
     gr.Markdown("# 🎧 Tamil Audio Translator + Analyzer")
     with gr.Row():
-        audio_input = gr.Audio(source="microphone", type="numpy", label="🎙️ Record or Upload Audio")
+        audio_input = gr.Audio(type="numpy", label="🎙️ Record or Upload Audio")
     with gr.Row():
         trans_output = gr.Textbox(label="📝 Transcription (Tamil)", lines=2)
         trans_en_output = gr.Textbox(label="🌐 Translated (English)", lines=2)
