@@ -150,6 +150,7 @@ import torch
 import torchaudio
 from transformers import AutoProcessor, AutoModelForImageTextToText
 
+
 # Get HF token from environment variable (ensure you set this before running)
 HF_TOKEN = os.environ.get("HF_TOKEN", None)
 GEMMA_MODEL_ID = "google/gemma-3n-E4B-it"
@@ -167,30 +168,43 @@ model.eval()  # set model to eval mode
 def transcribe_audio(audio_path):
     """
     Transcribes Tamil speech audio into text using Gemma 3n.
+
     Args:
         audio_path (str): Path to the input audio file.
-    Returns:
-        str: Transcribed text.
-    """
-    waveform, sample_rate = sf.read(audio_path)
 
-    # Convert stereo to mono by averaging if needed
+    Returns:
+        str: Transcribed text or error message.
+    """
+    if not audio_path or not os.path.exists(audio_path):
+        raise ValueError(f"Audio file does not exist or path is invalid: {audio_path}")
+
+    try:
+        waveform, sample_rate = sf.read(audio_path)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load audio: {e}")
+
+    # Convert stereo to mono if needed by averaging channels
     if waveform.ndim == 2:
         waveform = waveform.mean(axis=1)
     elif waveform.ndim != 1:
         raise ValueError(f"Unsupported audio shape: {waveform.shape}")
 
-    # Convert to float32 numpy and add batch dimension (1, num_samples)
-    waveform = np.asarray(waveform, dtype=np.float32)[None, :]
+    # Convert to float32 numpy array with shape (1, num_samples)
+    waveform = np.asarray(waveform, dtype=np.float32)
+    if waveform.ndim == 1:
+        waveform = waveform[None, :]  # Add batch dimension
+    elif waveform.ndim != 2 or waveform.shape[0] != 1:
+        # If unexpected shape, convert to mono and reshape explicitly
+        waveform = waveform.mean(axis=0, keepdims=True)
 
-    # Resample to 16 kHz if different sample rate
+    # Resample audio to 16 kHz if needed
     if sample_rate != 16000:
         waveform_torch = torch.from_numpy(waveform)
         resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)
         waveform_torch = resampler(waveform_torch)
         waveform = waveform_torch.numpy()
 
-    # Pad or truncate to max 30 seconds (480000 samples at 16 kHz)
+    # Pad or truncate to max 30 seconds (480,000 samples at 16 kHz)
     max_samples = 30 * 16000
     num_samples = waveform.shape[1]
     if num_samples < max_samples:
@@ -199,7 +213,11 @@ def transcribe_audio(audio_path):
     else:
         waveform = waveform[:, :max_samples]
 
-    # Prepare chat messages for processor
+    # Final checks before passing to processor
+    assert waveform.dtype == np.float32, f"Expected float32 dtype, got {waveform.dtype}"
+    assert waveform.ndim == 2 and waveform.shape[0] == 1, f"Waveform shape must be (1, samples), got {waveform.shape}"
+
+    # Prepare chat messages with audio and transcription instruction
     messages = [
         {
             "role": "user",
@@ -210,15 +228,15 @@ def transcribe_audio(audio_path):
         }
     ]
 
-    # Process and tokenize input
     input_ids = processor.apply_chat_template(
         messages, add_generation_prompt=True, tokenize=True, return_tensors="pt"
     )
     device = next(model.parameters()).device
     input_ids = input_ids.to(device)
 
-    # Generate transcription
+    # Generate transcription tokens
     outputs = model.generate(**input_ids, max_new_tokens=128)
+
     transcription = processor.batch_decode(outputs, skip_special_tokens=True)[0]
     return transcription
 
@@ -226,11 +244,16 @@ def transcribe_audio(audio_path):
 def summarize_text(text):
     """
     Summarizes Tamil text using Gemma 3n.
+
     Args:
         text (str): Input Tamil text to summarize.
+
     Returns:
         str: Summary text.
     """
+    if not isinstance(text, str) or len(text.strip()) == 0:
+        raise ValueError("Input text to summarize must be a non-empty string.")
+
     prompt = f"Summarize the following Tamil literature: {text}\nSummary:"
     messages = [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
 
@@ -243,3 +266,4 @@ def summarize_text(text):
     outputs = model.generate(**input_ids, max_new_tokens=150)
     summary = processor.batch_decode(outputs, skip_special_tokens=True)[0]
     return summary
+
