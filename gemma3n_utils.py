@@ -50,42 +50,42 @@ def deeper_analysis(text):
 '''
 
 
-# gemma3n_utils.py
-from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq, pipeline
-import torch
-import torchaudio
+import gradio as gr
+from gemma3n_utils import transcribe_audio, translate_to_english, deeper_analysis
 
-# Load models once at the start
-processor = AutoProcessor.from_pretrained("openai/whisper-small")
-model = AutoModelForSpeechSeq2Seq.from_pretrained("openai/whisper-small")
-model.to("cuda" if torch.cuda.is_available() else "cpu")
+def process_audio(audio_np, sample_rate):
+    if audio_np is None:
+        return "No audio provided", "", ""
 
-device = 0 if torch.cuda.is_available() else -1
-pipe = pipeline(
-    task="automatic-speech-recognition",
-    model=model,
-    tokenizer=processor.tokenizer,
-    feature_extractor=processor.feature_extractor,
-    device=device,
-)
+    # Transcribe Tamil audio
+    tamil_text = transcribe_audio(audio_np, sample_rate)
 
-def transcribe_audio(audio_np, sample_rate):
-    print("Transcribing uploaded audio")
-    waveform = torch.tensor(audio_np).float()
-    if waveform.ndim == 1:
-        waveform = waveform.unsqueeze(0)  # make it (1, num_samples)
-    resampled = torchaudio.functional.resample(waveform, orig_freq=sample_rate, new_freq=16000)
-    temp_file = "/tmp/temp.wav"
-    torchaudio.save(temp_file, resampled, 16000)
-    result = pipe(temp_file)
-    return result["text"]
+    # Translate to English
+    english_translation = translate_to_english(tamil_text)
 
-def translate_to_english(tamil_text):
-    # Dummy placeholder for actual translation logic
-    print(f"Translating: {tamil_text}")
-    return f"[Translated] {tamil_text}"
+    # Perform deeper analysis in English
+    analysis = deeper_analysis(english_translation)
 
-def deeper_analysis(english_text):
-    # Dummy placeholder for NLP techniques
-    print(f"Analyzing: {english_text}")
-    return f"[Analysis] This appears to be a sample Tamil audio about literature or conversation."
+    return tamil_text, english_translation, analysis
+
+with gr.Blocks() as app:
+    gr.Markdown("# 🗣️ Tamil Audio Transcriber, Translator & Analyzer")
+
+    with gr.Row():
+        with gr.Column():
+            audio_input = gr.Audio(type="numpy", label="🎤 Upload or Record Audio")
+            submit_button = gr.Button("🔍 Analyze")
+
+        with gr.Column():
+            tamil_output = gr.Textbox(label="📝 Transcribed Tamil Text")
+            english_output = gr.Textbox(label="🌐 English Translation")
+            analysis_output = gr.Textbox(label="📊 Deeper English Analysis")
+
+    submit_button.click(
+        fn=process_audio,
+        inputs=[audio_input],
+        outputs=[tamil_output, english_output, analysis_output]
+    )
+
+app.launch(share=True)
+
