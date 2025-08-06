@@ -143,61 +143,63 @@ def summarize_text(text):
     return summary
 '''
 
-
 import os
 import numpy as np
 import soundfile as sf
 import torch
 import torchaudio
-import gradio as gr
 from transformers import AutoProcessor, AutoModelForImageTextToText
 
-# === Configuration ===
-HF_TOKEN = os.environ.get("HF_TOKEN", None)  # Set your HF token in environment for gated models
+# Get HF token from environment variable (ensure you set this before running)
+HF_TOKEN = os.environ.get("HF_TOKEN", None)
 GEMMA_MODEL_ID = "google/gemma-3n-E4B-it"
 
-
-# === Load Processor and Model ===
+# Load model and processor once on import
 processor = AutoProcessor.from_pretrained(GEMMA_MODEL_ID, token=HF_TOKEN)
 model = AutoModelForImageTextToText.from_pretrained(
     GEMMA_MODEL_ID,
     torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
     token=HF_TOKEN,
 )
-model.eval()
+model.eval()  # set model to eval mode
 
 
-# === Audio Processing and Inference Functions ===
 def transcribe_audio(audio_path):
     """
-    Load audio from path, preprocess, and transcribe Tamil speech using Gemma 3n.
+    Transcribes Tamil speech audio into text using Gemma 3n.
+    Args:
+        audio_path (str): Path to the input audio file.
+    Returns:
+        str: Transcribed text.
     """
     waveform, sample_rate = sf.read(audio_path)
 
-    # Convert to mono if stereo
+    # Convert stereo to mono by averaging if needed
     if waveform.ndim == 2:
         waveform = waveform.mean(axis=1)
     elif waveform.ndim != 1:
         raise ValueError(f"Unsupported audio shape: {waveform.shape}")
 
-    # Convert to float32 and shape to (1, num_samples)
+    # Convert to float32 numpy and add batch dimension (1, num_samples)
     waveform = np.asarray(waveform, dtype=np.float32)[None, :]
 
-    # Resample to 16kHz if needed
+    # Resample to 16 kHz if different sample rate
     if sample_rate != 16000:
-        waveform_t = torch.from_numpy(waveform)
+        waveform_torch = torch.from_numpy(waveform)
         resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)
-        waveform_t = resampler(waveform_t)
-        waveform = waveform_t.numpy()
+        waveform_torch = resampler(waveform_torch)
+        waveform = waveform_torch.numpy()
 
-    # Pad or truncate to max 30 seconds (480000 samples at 16kHz)
+    # Pad or truncate to max 30 seconds (480000 samples at 16 kHz)
     max_samples = 30 * 16000
     num_samples = waveform.shape[1]
     if num_samples < max_samples:
-        waveform = np.pad(waveform, ((0, 0), (0, max_samples - num_samples)), mode="constant")
+        pad_width = max_samples - num_samples
+        waveform = np.pad(waveform, ((0, 0), (0, pad_width)), mode="constant")
     else:
         waveform = waveform[:, :max_samples]
 
+    # Prepare chat messages for processor
     messages = [
         {
             "role": "user",
@@ -208,12 +210,14 @@ def transcribe_audio(audio_path):
         }
     ]
 
+    # Process and tokenize input
     input_ids = processor.apply_chat_template(
         messages, add_generation_prompt=True, tokenize=True, return_tensors="pt"
     )
     device = next(model.parameters()).device
     input_ids = input_ids.to(device)
 
+    # Generate transcription
     outputs = model.generate(**input_ids, max_new_tokens=128)
     transcription = processor.batch_decode(outputs, skip_special_tokens=True)[0]
     return transcription
@@ -221,7 +225,11 @@ def transcribe_audio(audio_path):
 
 def summarize_text(text):
     """
-    Summarize Tamil text using Gemma 3n.
+    Summarizes Tamil text using Gemma 3n.
+    Args:
+        text (str): Input Tamil text to summarize.
+    Returns:
+        str: Summary text.
     """
     prompt = f"Summarize the following Tamil literature: {text}\nSummary:"
     messages = [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
@@ -235,6 +243,3 @@ def summarize_text(text):
     outputs = model.generate(**input_ids, max_new_tokens=150)
     summary = processor.batch_decode(outputs, skip_special_tokens=True)[0]
     return summary
-
-
-
