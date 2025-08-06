@@ -1,4 +1,4 @@
-'''# app.py
+# app.py
 import gradio as gr
 from gemma3n_utils import transcribe_audio, translate_to_english, deeper_analysis
 
@@ -70,4 +70,4 @@ with gr.Blocks() as app:
     )
 
 app.launch()
-
+'''
