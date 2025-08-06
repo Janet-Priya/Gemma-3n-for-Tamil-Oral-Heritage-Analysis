@@ -178,8 +178,9 @@ def transcribe_audio(audio_path):
     elif waveform.ndim != 1:
         raise ValueError(f"Unsupported audio shape: {waveform.shape}")
 
-    # Convert to float32
-    waveform = np.asarray(waveform, dtype=np.float32)[None, :]
+    # Convert to float32 and make it 2D: (batch_size=1, time)
+    waveform = np.asarray(waveform, dtype=np.float32)
+    waveform = waveform[None, :]  # shape = (1, time)
 
     # Resample to 16kHz
     if sample_rate != 16000:
@@ -198,7 +199,7 @@ def transcribe_audio(audio_path):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     waveform_tensor = waveform_tensor.to(device)
 
-    # Convert to numpy for processor
+    # Convert to numpy (batch, time)
     waveform_np = waveform_tensor.cpu().numpy()
 
     # Prompt Gemma 3n to transcribe
@@ -218,6 +219,7 @@ def transcribe_audio(audio_path):
     outputs = model.generate(**input_ids, max_new_tokens=128)
     transcription = processor.batch_decode(outputs, skip_special_tokens=True)[0]
     return transcription
+
 
 def summarize_text(text):
     if not isinstance(text, str) or len(text.strip()) == 0:
