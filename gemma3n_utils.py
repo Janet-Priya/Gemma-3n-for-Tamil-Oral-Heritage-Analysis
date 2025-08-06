@@ -239,7 +239,7 @@ def summarize_text(text):
 
 '''
 
-
+'''
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 import torch
 import torchaudio
@@ -284,3 +284,47 @@ def summarize_text(text):
     
     summary = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return summary.replace(prompt, "").strip()
+'''
+
+
+
+# gemma3n_utils.py
+from transformers import AutoProcessor, AutoModelForSeq2SeqLM
+import torch
+import torchaudio
+import os
+
+# Load the Gemma model and processor (adjust to your actual model path)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = AutoModelForSeq2SeqLM.from_pretrained("google/gemma-1.1-2b-it", torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32)
+processor = AutoProcessor.from_pretrained("google/gemma-1.1-2b-it")
+model.to(device)
+
+def transcribe_audio(audio_path):
+    print(f"Transcribing: {audio_path}")
+    waveform, sample_rate = torchaudio.load(audio_path)
+    # Resample if needed
+    if sample_rate != 16000:
+        waveform = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)(waveform)
+    inputs = processor(text="Transcribe this Tamil audio:", audio=waveform.squeeze(0), sampling_rate=16000, return_tensors="pt").to(device)
+    with torch.no_grad():
+        outputs = model.generate(**inputs, max_new_tokens=256)
+    transcription = processor.decode(outputs[0], skip_special_tokens=True)
+    return transcription
+
+def translate_to_english(text):
+    print("Translating Tamil to English...")
+    inputs = processor(text="Translate this to English: " + text, return_tensors="pt").to(device)
+    with torch.no_grad():
+        outputs = model.generate(**inputs, max_new_tokens=256)
+    translation = processor.decode(outputs[0], skip_special_tokens=True)
+    return translation
+
+def deeper_analysis(text):
+    print("Performing deeper analysis...")
+    prompt = f"Analyze this English content in depth:\n{text}"
+    inputs = processor(text=prompt, return_tensors="pt").to(device)
+    with torch.no_grad():
+        outputs = model.generate(**inputs, max_new_tokens=512)
+    analysis = processor.decode(outputs[0], skip_special_tokens=True)
+    return analysis
