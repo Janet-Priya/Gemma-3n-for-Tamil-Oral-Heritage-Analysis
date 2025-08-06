@@ -150,30 +150,20 @@ import torch
 import torchaudio
 from transformers import AutoProcessor, AutoModelForImageTextToText
 
-# Get HF token from environment variable (ensure you set this before running)
+# Set model ID and HF token
 HF_TOKEN = os.environ.get("HF_TOKEN", None)
 GEMMA_MODEL_ID = "google/gemma-3n-E4B-it"
 
-# Load model and processor once on import
+# Load processor and model
 processor = AutoProcessor.from_pretrained(GEMMA_MODEL_ID, token=HF_TOKEN)
 model = AutoModelForImageTextToText.from_pretrained(
     GEMMA_MODEL_ID,
     torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
     token=HF_TOKEN,
 )
-model.eval()  # set model to eval mode
-
+model.eval()
 
 def transcribe_audio(audio_path):
-    """
-    Transcribes Tamil speech audio into text using Gemma 3n.
-
-    Args:
-        audio_path (str): Path to the input audio file.
-
-    Returns:
-        str: Transcribed text or error message.
-    """
     if not audio_path or not os.path.exists(audio_path):
         raise ValueError(f"Audio file does not exist or path is invalid: {audio_path}")
 
@@ -182,17 +172,16 @@ def transcribe_audio(audio_path):
     except Exception as e:
         raise RuntimeError(f"Failed to load audio: {e}")
 
-    # Convert stereo to mono
+    # Convert stereo to mono if needed
     if waveform.ndim == 2:
         waveform = waveform.mean(axis=1)
     elif waveform.ndim != 1:
         raise ValueError(f"Unsupported audio shape: {waveform.shape}")
 
-    # Convert to float32 and add batch dim
-    waveform = np.asarray(waveform, dtype=np.float32)
-    waveform = waveform[None, :]  # Shape: (1, samples)
+    # Convert to float32
+    waveform = np.asarray(waveform, dtype=np.float32)[None, :]
 
-    # Resample to 16kHz if needed
+    # Resample to 16kHz
     if sample_rate != 16000:
         waveform_tensor = torch.from_numpy(waveform)
         resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)
@@ -200,23 +189,19 @@ def transcribe_audio(audio_path):
     else:
         waveform_tensor = torch.from_numpy(waveform)
 
-    # Pad or truncate to 30s (480,000 samples)
+    # Pad/truncate to 30s (480k samples)
     max_samples = 30 * 16000
-    num_samples = waveform_tensor.shape[1]
-    if num_samples < max_samples:
-        pad_width = max_samples - num_samples
-        waveform_tensor = torch.nn.functional.pad(waveform_tensor, (0, pad_width))
-    else:
-        waveform_tensor = waveform_tensor[:, :max_samples]
+    waveform_tensor = torch.nn.functional.pad(waveform_tensor, (0, max(0, max_samples - waveform_tensor.shape[1])))
+    waveform_tensor = waveform_tensor[:, :max_samples]
 
-    # Move to appropriate device
+    # Move to device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     waveform_tensor = waveform_tensor.to(device)
 
-    # Convert to NumPy (CPU) for processor
-    waveform_np = waveform_tensor.detach().cpu().numpy()
+    # Convert to numpy for processor
+    waveform_np = waveform_tensor.cpu().numpy()
 
-    # Prepare chat prompt
+    # Prompt Gemma 3n to transcribe
     messages = [
         {
             "role": "user",
@@ -226,7 +211,6 @@ def transcribe_audio(audio_path):
             ],
         }
     ]
-
     input_ids = processor.apply_chat_template(
         messages, add_generation_prompt=True, tokenize=True, return_tensors="pt"
     ).to(device)
@@ -235,17 +219,7 @@ def transcribe_audio(audio_path):
     transcription = processor.batch_decode(outputs, skip_special_tokens=True)[0]
     return transcription
 
-
 def summarize_text(text):
-    """
-    Summarizes Tamil text using Gemma 3n.
-
-    Args:
-        text (str): Input Tamil text to summarize.
-
-    Returns:
-        str: Summary text.
-    """
     if not isinstance(text, str) or len(text.strip()) == 0:
         raise ValueError("Input text to summarize must be a non-empty string.")
 
@@ -256,10 +230,6 @@ def summarize_text(text):
     input_ids = processor.apply_chat_template(
         messages, add_generation_prompt=True, tokenize=True, return_tensors="pt"
     ).to(device)
-
-    outputs = model.generate(**input_ids, max_new_tokens=150)
-    summary = processor.batch_decode(outputs, skip_special_tokens=True)[0]
-    return summary
 
     outputs = model.generate(**input_ids, max_new_tokens=150)
     summary = processor.batch_decode(outputs, skip_special_tokens=True)[0]
