@@ -60,25 +60,32 @@ processor = AutoProcessor.from_pretrained("openai/whisper-small")
 model = AutoModelForSpeechSeq2Seq.from_pretrained("openai/whisper-small")
 model.to("cuda" if torch.cuda.is_available() else "cpu")
 
+device = 0 if torch.cuda.is_available() else -1
 pipe = pipeline(
     task="automatic-speech-recognition",
     model=model,
     tokenizer=processor.tokenizer,
     feature_extractor=processor.feature_extractor,
-    device=0 if torch.cuda.is_available() else -1,
+    device=device,
 )
 
-def transcribe_audio(audio_path):
-    print(f"Transcribing file: {audio_path}")
-    result = pipe(audio_path)
+def transcribe_audio(audio_np, sample_rate):
+    print("Transcribing uploaded audio")
+    waveform = torch.tensor(audio_np).float()
+    if waveform.ndim == 1:
+        waveform = waveform.unsqueeze(0)  # make it (1, num_samples)
+    resampled = torchaudio.functional.resample(waveform, orig_freq=sample_rate, new_freq=16000)
+    temp_file = "/tmp/temp.wav"
+    torchaudio.save(temp_file, resampled, 16000)
+    result = pipe(temp_file)
     return result["text"]
 
 def translate_to_english(tamil_text):
-    # Dummy placeholder for actual translation logic (e.g. using NLLB or MarianMT)
+    # Dummy placeholder for actual translation logic
     print(f"Translating: {tamil_text}")
     return f"[Translated] {tamil_text}"
 
 def deeper_analysis(english_text):
-    # Dummy placeholder for NLP techniques (summarization, emotion, sentiment, etc.)
+    # Dummy placeholder for NLP techniques
     print(f"Analyzing: {english_text}")
     return f"[Analysis] This appears to be a sample Tamil audio about literature or conversation."
