@@ -12,25 +12,8 @@ The goal of this project is to create a base system that can support the preserv
 
 This tool can serve as a digital assistant for linguists, researchers, and cultural preservationists working with oral literature.
 
----
 
-##  Project Structure
-Tamil-Literature-summarize/
-│
-├── app.py # Gradio application entry point
-├── gemma3n_utils.py # Core logic for transcription, translation, and analysis
-├── requirements.txt # Python dependencies
-├── index.html # (Optional) Custom landing page for hosting
-└── README.md # Project documentation
-
-yaml
-Copy
-
-
-
----
-
-## ⚙️ Features
+## Features
 
 - ** Tamil Audio Transcription**: Converts spoken Tamil audio into text using deep learning.
 - ** English Translation**: Automatically translates the transcription into English.
@@ -39,7 +22,7 @@ Copy
 
 ---
 
-## 🧠 Model Information
+## Model Information
 
 The project uses the `google/gemma-1.1-2b-it` language model for all tasks:
 - Implemented via Hugging Face Transformers and Gradio
