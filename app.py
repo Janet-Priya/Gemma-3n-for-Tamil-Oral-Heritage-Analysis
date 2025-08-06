@@ -71,7 +71,7 @@ with gr.Blocks() as app:
 
 app.launch()
 
-'''
+
 
 # app.py
 import gradio as gr
