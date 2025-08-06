@@ -1,6 +1,9 @@
 # Unsloth-Finetuned Gemma 3n for Tamil Oral Heritage: Transcription, Translation, and Thematic Analysis
 This project is a foundational prototype that demonstrates the use of artificial intelligence for preserving and analyzing Tamil oral literature. It enables users to upload Tamil audio recordings, automatically transcribe them, translate the transcription into English, and generate a deeper literary or contextual analysis of the content.
 
+The Kaggle notebook comprises of the project and the main finetunes model using UnSloth and it is built using Gemma 3n
+https://www.kaggle.com/code/janetanand/gemma-3n-for-tamil-oral-heritage-analysis
+
 ---
 
 ##  Project Objective
