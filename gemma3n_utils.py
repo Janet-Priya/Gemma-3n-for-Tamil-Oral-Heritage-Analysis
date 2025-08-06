@@ -141,7 +141,7 @@ def summarize_text(text):
     outputs = model.generate(**input_ids, max_new_tokens=150)
     summary = processor.batch_decode(outputs, skip_special_tokens=True)[0]
     return summary
-'''
+
 
 import os
 import numpy as np
@@ -237,3 +237,63 @@ def summarize_text(text):
     summary = processor.batch_decode(outputs, skip_special_tokens=True)[0]
     return summary
 
+'''
+
+
+
+from unsloth import FastModel
+from transformers import pipeline
+import librosa
+
+
+# === GEMMA LOADER === #
+def load_gemma_model(
+    model_name="unsloth/gemma-3n-E4B-it",
+    dtype=None,
+    max_seq_length=1024,
+    load_in_4bit=True,
+    full_finetuning=False,
+):
+    model, tokenizer = FastModel.from_pretrained(
+        model_name=model_name,
+        dtype=dtype,
+        max_seq_length=max_seq_length,
+        load_in_4bit=load_in_4bit,
+        full_finetuning=full_finetuning,
+    )
+    return model, tokenizer
+
+
+# === AUDIO RESAMPLER === #
+def resample_audio(dataset_sample, target_sr=16000):
+    audio_array = dataset_sample['audio']['array']
+    original_sr = dataset_sample['audio']['sampling_rate']
+    resampled_audio = librosa.resample(audio_array, orig_sr=original_sr, target_sr=target_sr)
+
+    print(f"Original Sample Rate: {original_sr}")
+    print(f"Resampled Audio Shape: {resampled_audio.shape}")
+    
+    return resampled_audio
+
+
+# === WHISPER ASR === #
+def transcribe_audio(audio_array, whisper_model="openai/whisper-small", device=-1):
+    asr = pipeline("automatic-speech-recognition", model=whisper_model, device=device)
+    result = asr(audio_array)
+    transcript = result['text']
+    
+    print("ASR Transcript:", transcript)
+    return transcript
+
+
+# === FUTURE: Summarize Transcript using Gemma === #
+def summarize_transcript(transcript, model, tokenizer):
+    # Placeholder for when you plug Gemma for summarization
+    prompt = f"Summarize the following Tamil text:\n\n{transcript}"
+    
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    outputs = model.generate(**inputs, max_new_tokens=100)
+    
+    summary = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    print("Summary:", summary)
+    return summary
