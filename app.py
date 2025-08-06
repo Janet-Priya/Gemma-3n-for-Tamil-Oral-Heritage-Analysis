@@ -21,7 +21,7 @@ iface = gr.Interface(
 )
 
 iface.launch(server_name="0.0.0.0", server_port=7860)
-
+'''
 import gradio as gr
 from gemma3n_utils import transcribe_audio, translate_to_english, deeper_analysis
 import os
@@ -117,8 +117,9 @@ with gr.Blocks(css=custom_css) as interface:
         trans_en_output = gr.Textbox(label="🌐 Translated (English)", lines=2)
     with gr.Row():
         analysis_output = gr.Textbox(label="🧠 Deeper Analysis", lines=4)
-'''
+
     submit_btn = gr.Button("Process Audio")
     submit_btn.click(fn=process_audio, inputs=[audio_input], outputs=[trans_output, trans_en_output, analysis_output])
 
 interface.launch(share=True)
+'''
