@@ -47,7 +47,7 @@ def deeper_analysis(text):
         outputs = model.generate(**inputs, max_new_tokens=512)
     return tokenizer.decode(outputs[0], skip_special_tokens=True).replace(prompt, "").strip()
 
-
+'''
 # gemma3n_utils.py
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq, pipeline
 import torch
@@ -79,8 +79,7 @@ def translate_to_english(tamil_text):
 def deeper_analysis(english_text):
     # Dummy placeholder for NLP techniques (summarization, emotion, sentiment, etc.)
     print(f"Analyzing: {english_text}")
-    return f"[Analysis] This appears to be a sample Tamil audio about literature or conversation."
-'''
+
 # gemma3n_utils.py
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq, pipeline
 import torch
@@ -127,9 +126,7 @@ def deeper_analysis(english_text):
     )
 
 
-'''
 
-'''
 # gemma3n_utils.py
 from transformers import AutoProcessor, AutoModelForCausalLM
 import torch
@@ -170,8 +167,7 @@ def deeper_analysis(text):
         outputs = model.generate(**inputs, max_new_tokens=512)
     analysis = processor.decode(outputs[0], skip_special_tokens=True)
     return analysis
-'''
-'''
+
 from functools import lru_cache
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
