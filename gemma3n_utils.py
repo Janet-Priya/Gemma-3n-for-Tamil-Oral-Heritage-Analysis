@@ -1,4 +1,4 @@
-'''# gemma3n_utils.py
+# gemma3n_utils.py
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 import torch
@@ -47,7 +47,7 @@ def deeper_analysis(text):
         outputs = model.generate(**inputs, max_new_tokens=512)
     return tokenizer.decode(outputs[0], skip_special_tokens=True).replace(prompt, "").strip()
 
-
+'''
 # gemma3n_utils.py
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq, pipeline
 import torch
@@ -187,7 +187,7 @@ def translate_to_english(tamil_text):
     inputs = tokenizer(tamil_text, return_tensors="pt", truncation=True).to("cuda")
     outputs = translation_model.generate(**inputs, max_new_tokens=200)
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
-
+'''
 '''
 from transformers import AutoProcessor, AutoModelForSeq2SeqLM
 import torch
@@ -244,3 +244,4 @@ def deeper_analysis(text):
     with torch.no_grad():
         outputs = model.generate(**inputs, max_new_tokens=512)
     return processor.decode(outputs[0], skip_special_tokens=True)
+'''
