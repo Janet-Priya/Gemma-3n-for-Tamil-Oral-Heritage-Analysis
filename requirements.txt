@@ -1,9 +1,7 @@
-streamlit
+gradio
 torch
 transformers
 torchaudio
-accelerate
-timm
 tempfile
 librosa
 soundfile
