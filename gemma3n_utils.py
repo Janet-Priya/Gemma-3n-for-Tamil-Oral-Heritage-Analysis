@@ -183,46 +183,43 @@ def transcribe_audio(audio_path):
     except Exception as e:
         raise RuntimeError(f"Failed to load audio: {e}")
 
-    # Convert stereo to mono if needed by averaging channels
+    # Convert stereo to mono
     if waveform.ndim == 2:
         waveform = waveform.mean(axis=1)
     elif waveform.ndim != 1:
         raise ValueError(f"Unsupported audio shape: {waveform.shape}")
 
-    # Convert to float32 numpy array with shape (1, num_samples)
+    # Convert to float32 and add batch dim
     waveform = np.asarray(waveform, dtype=np.float32)
-    if waveform.ndim == 1:
-        waveform = waveform[None, :]  # Add batch dimension
-    elif waveform.ndim != 2 or waveform.shape[0] != 1:
-        # If unexpected shape, convert to mono and reshape explicitly
-        waveform = waveform.mean(axis=0, keepdims=True)
+    waveform = waveform[None, :]  # Shape: (1, samples)
 
-    # Resample audio to 16 kHz if needed
+    # Resample if needed
     if sample_rate != 16000:
-        waveform_torch = torch.from_numpy(waveform)
+        waveform_tensor = torch.from_numpy(waveform)
         resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)
-        waveform_torch = resampler(waveform_torch)
-        waveform = waveform_torch.numpy()
+        waveform_tensor = resampler(waveform_tensor)
+    else:
+        waveform_tensor = torch.from_numpy(waveform)
 
-    # Pad or truncate to max 30 seconds (480,000 samples at 16 kHz)
+    # Truncate or pad to 30s
     max_samples = 30 * 16000
-    num_samples = waveform.shape[1]
+    num_samples = waveform_tensor.shape[1]
     if num_samples < max_samples:
         pad_width = max_samples - num_samples
-        waveform = np.pad(waveform, ((0, 0), (0, pad_width)), mode="constant")
+        waveform_tensor = torch.nn.functional.pad(waveform_tensor, (0, pad_width))
     else:
-        waveform = waveform[:, :max_samples]
+        waveform_tensor = waveform_tensor[:, :max_samples]
 
-    # Final checks before passing to processor
-    assert waveform.dtype == np.float32, f"Expected float32 dtype, got {waveform.dtype}"
-    assert waveform.ndim == 2 and waveform.shape[0] == 1, f"Waveform shape must be (1, samples), got {waveform.shape}"
+    # Ensure tensor on correct device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    waveform_tensor = waveform_tensor.to(device)
 
-    # Prepare chat messages with audio and transcription instruction
+    # Chat template with audio input
     messages = [
         {
             "role": "user",
             "content": [
-                {"type": "audio", "audio": waveform},
+                {"type": "audio", "audio": waveform_tensor},
                 {"type": "text", "text": "Transcribe this audio in Tamil."},
             ],
         }
@@ -230,13 +227,9 @@ def transcribe_audio(audio_path):
 
     input_ids = processor.apply_chat_template(
         messages, add_generation_prompt=True, tokenize=True, return_tensors="pt"
-    )
-    device = next(model.parameters()).device
-    input_ids = input_ids.to(device)
+    ).to(device)
 
-    # Generate transcription tokens
     outputs = model.generate(**input_ids, max_new_tokens=128)
-
     transcription = processor.batch_decode(outputs, skip_special_tokens=True)[0]
     return transcription
 
