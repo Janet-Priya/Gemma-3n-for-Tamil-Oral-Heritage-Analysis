@@ -48,51 +48,38 @@ def deeper_analysis(text):
     return tokenizer.decode(outputs[0], skip_special_tokens=True).replace(prompt, "").strip()
 
 '''
-
+# gemma3n_utils.py
+from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq, pipeline
 import torch
 import torchaudio
-from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
-import librosa
 
-# Load translation model (Tamil → English)
-tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-ta-en")
-model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-ta-en")
+# Load models once at the start
+processor = AutoProcessor.from_pretrained("openai/whisper-small")
+model = AutoModelForSpeechSeq2Seq.from_pretrained("openai/whisper-small")
+model.to("cuda" if torch.cuda.is_available() else "cpu")
 
-# Load summarization pipeline (Gemma or any supported model)
-summarizer = pipeline("summarization", model="google/pegasus-xsum")
+pipe = pipeline(
+    task="automatic-speech-recognition",
+    model=model,
+    tokenizer=processor.tokenizer,
+    feature_extractor=processor.feature_extractor,
+    device=0 if torch.cuda.is_available() else -1,
+)
 
-# Transcription using torchaudio + Whisper
 def transcribe_audio(audio_path):
-    print(f"Loading audio from: {audio_path}")
-    waveform, sample_rate = torchaudio.load(audio_path)
-    print(f"Waveform shape: {waveform.shape}, Sample rate: {sample_rate}")
-    
-    # Use Whisper (or use your preferred transcription model here)
-    from transformers import WhisperProcessor, WhisperForConditionalGeneration
-    processor = WhisperProcessor.from_pretrained("openai/whisper-small")
-    model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small")
+    print(f"Transcribing file: {audio_path}")
+    result = pipe(audio_path)
+    return result["text"]
 
-    inputs = processor(waveform.squeeze().numpy(), sampling_rate=sample_rate, return_tensors="pt")
-    with torch.no_grad():
-        predicted_ids = model.generate(inputs["input_features"])
-    transcription = processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
-    
-    return transcription
-
-# Translation Tamil → English
 def translate_to_english(tamil_text):
-    inputs = tokenizer(tamil_text, return_tensors="pt", padding=True)
-    outputs = model.generate(**inputs)
-    english_translation = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return english_translation
+    # Dummy placeholder for actual translation logic (e.g. using NLLB or MarianMT)
+    print(f"Translating: {tamil_text}")
+    return f"[Translated] {tamil_text}"
 
-# Deeper analysis (summarization)
 def deeper_analysis(english_text):
-    summary = summarizer(english_text, max_length=100, min_length=30, do_sample=False)[0]['summary_text']
-    return summary
-
-
-
+    # Dummy placeholder for NLP techniques (summarization, emotion, sentiment, etc.)
+    print(f"Analyzing: {english_text}")
+    return f"[Analysis] This appears to be a sample Tamil audio about literature or conversation."
 
 
 
