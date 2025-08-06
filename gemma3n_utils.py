@@ -150,7 +150,6 @@ import torch
 import torchaudio
 from transformers import AutoProcessor, AutoModelForImageTextToText
 
-
 # Get HF token from environment variable (ensure you set this before running)
 HF_TOKEN = os.environ.get("HF_TOKEN", None)
 GEMMA_MODEL_ID = "google/gemma-3n-E4B-it"
@@ -193,7 +192,7 @@ def transcribe_audio(audio_path):
     waveform = np.asarray(waveform, dtype=np.float32)
     waveform = waveform[None, :]  # Shape: (1, samples)
 
-    # Resample if needed
+    # Resample to 16kHz if needed
     if sample_rate != 16000:
         waveform_tensor = torch.from_numpy(waveform)
         resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)
@@ -201,7 +200,7 @@ def transcribe_audio(audio_path):
     else:
         waveform_tensor = torch.from_numpy(waveform)
 
-    # Truncate or pad to 30s
+    # Pad or truncate to 30s (480,000 samples)
     max_samples = 30 * 16000
     num_samples = waveform_tensor.shape[1]
     if num_samples < max_samples:
@@ -210,16 +209,19 @@ def transcribe_audio(audio_path):
     else:
         waveform_tensor = waveform_tensor[:, :max_samples]
 
-    # Ensure tensor on correct device
+    # Move to appropriate device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     waveform_tensor = waveform_tensor.to(device)
 
-    # Chat template with audio input
+    # Convert to NumPy (CPU) for processor
+    waveform_np = waveform_tensor.detach().cpu().numpy()
+
+    # Prepare chat prompt
     messages = [
         {
             "role": "user",
             "content": [
-                {"type": "audio", "audio": waveform_tensor},
+                {"type": "audio", "audio": waveform_np},
                 {"type": "text", "text": "Transcribe this audio in Tamil."},
             ],
         }
@@ -250,11 +252,14 @@ def summarize_text(text):
     prompt = f"Summarize the following Tamil literature: {text}\nSummary:"
     messages = [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     input_ids = processor.apply_chat_template(
         messages, add_generation_prompt=True, tokenize=True, return_tensors="pt"
-    )
-    device = next(model.parameters()).device
-    input_ids = input_ids.to(device)
+    ).to(device)
+
+    outputs = model.generate(**input_ids, max_new_tokens=150)
+    summary = processor.batch_decode(outputs, skip_special_tokens=True)[0]
+    return summary
 
     outputs = model.generate(**input_ids, max_new_tokens=150)
     summary = processor.batch_decode(outputs, skip_special_tokens=True)[0]
