@@ -1,133 +1,4 @@
-'''import streamlit as st
-import tempfile
-import os
-
-from gemma3n_utils import transcribe_audio, summarize_text
-
-st.title("Tamil ASR and Literary Summarization with Gemma 3n")
-
-audio_file = st.file_uploader("Upload Tamil audio (*.wav, *.flac, *.mp3)", type=["wav", "flac", "mp3"])
-
-if audio_file is not None:
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
-        temp_audio.write(audio_file.read())
-        temp_path = temp_audio.name
-
-    st.audio(temp_path)
-
-    with st.spinner("Transcribing..."):
-        transcription = transcribe_audio(temp_path)
-    st.subheader("Transcription")
-    st.write(transcription)
-
-    with st.spinner("Summarizing..."):
-        summary = summarize_text(transcription)
-    st.subheader("Summary")
-    st.write(summary)
-#
-    os.remove(temp_path)
-else:
-    st.info("Please upload a Tamil audio file.")
-
-
-import gradio as gr
-from gemma3n_utils import transcribe_audio, summarize_text
-
-def full_pipeline(audio_path):
-    transcription = transcribe_audio(audio_path)
-    summary = summarize_text(transcription)
-    return transcription, summary
-
-demo = gr.Interface(
-    fn=full_pipeline,
-    inputs=gr.Audio(type="filepath", label="Upload Tamil audio (wav, flac, mp3)"),
-    outputs=[gr.Textbox(label="Transcription"), gr.Textbox(label="Summary")],
-    title="Tamil ASR and Literary Summarization with Gemma 3n",
-    description="Upload an audio file with Tamil speech to transcribe and summarize."
-)
-
-if __name__ == "__main__":
-    demo.launch(share=True)
-    
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-import torch
-import torchaudio
-import tempfile
-import librosa
-import soundfile as sf
-
-# Load Whisper model for Tamil audio transcription
-asr = pipeline("automatic-speech-recognition", model="openai/whisper-small", device=0 if torch.cuda.is_available() else -1)
-
-# Load Gemma 3n model for summarization
-tokenizer = AutoTokenizer.from_pretrained("google/gemma-1.1-2b-it")
-model = AutoModelForCausalLM.from_pretrained("google/gemma-1.1-2b-it", torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32)
-model.eval()
-
-if torch.cuda.is_available():
-    model = model.to("cuda")
-
-# Transcription function
-def transcribe_audio(audio_bytes):
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tmp:
-        tmp.write(audio_bytes)
-        tmp.flush()
-
-        audio_array, sr = torchaudio.load(tmp.name)
-        audio_array = audio_array[0].numpy()  # Convert from tensor to numpy
-        audio_16k = librosa.resample(audio_array, orig_sr=sr, target_sr=16000)
-
-        transcription = asr(audio_16k)
-        return transcription["text"]
-
-# Summarization function
-def summarize_text(text):
-    prompt = f"தமிழில் இந்த உரையை சுருக்கவும்:\n{text}\n\nசுருக்கம்:"
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024)
-
-    if torch.cuda.is_available():
-        inputs = {k: v.to("cuda") for k, v in inputs.items()}
-
-    with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=150, do_sample=True, temperature=0.7)
-    
-    summary = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return summary.replace(prompt, "").strip()
-'''
-
-'''import gradio as gr
-from gemma3n_utils import transcribe_audio, summarize_text
-
-def process_audio(audio):
-    if audio is None:
-        return "Please upload or record an audio file.", ""
-    
-    with open(audio, "rb") as f:
-        audio_bytes = f.read()
-
-    transcription = transcribe_audio(audio_bytes)
-    summary = summarize_text(transcription)
-    return transcription, summary
-
-with gr.Blocks() as demo:
-    gr.Markdown("""
-    ## Tamil Audio Transcription & Summarization App  
-    Upload your Tamil audio and let the model transcribe and summarize it!
-    """)
-
-    with gr.Row():
-        audio_input = gr.Audio(type="filepath", label="🎙️ Upload Audio", interactive=True)
-
-    transcribed_output = gr.Textbox(label="Transcription", lines=6)
-    summary_output = gr.Textbox(label="Summarization", lines=4)
-
-    transcribe_button = gr.Button("✨ Transcribe & Summarize")
-
-    transcribe_button.click(fn=process_audio, inputs=audio_input, outputs=[transcribed_output, summary_output])
-
-demo.launch()
-'''
-# app.py
+'''# app.py
 import gradio as gr
 from gemma3n_utils import transcribe_audio, translate_to_english, deeper_analysis
 
@@ -150,3 +21,54 @@ iface = gr.Interface(
 )
 
 iface.launch(server_name="0.0.0.0", server_port=7860)
+'''
+
+# app.py
+import gradio as gr
+from gemma3n_utils import transcribe_audio, translate_to_english, deeper_analysis
+import torch
+import torchaudio
+import tempfile
+
+def process_audio(audio):
+    print(f"Received audio input: {audio}")
+
+    if isinstance(audio, tuple):
+        # Microphone input: (sample_rate, numpy_array)
+        sample_rate, data = audio
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+        torchaudio.save(temp_file.name, torch.tensor(data).unsqueeze(0), sample_rate=sample_rate)
+        audio_path = temp_file.name
+    elif isinstance(audio, str):
+        # File upload
+        audio_path = audio
+    else:
+        raise ValueError("Unsupported audio input type")
+
+    print(f"Transcribing: {audio_path}")
+    transcription = transcribe_audio(audio_path)
+    translated = translate_to_english(transcription)
+    analysis = deeper_analysis(translated)
+
+    return transcription, translated, analysis
+
+with gr.Blocks(title="Tamil Audio Transcriber & Translator") as demo:
+    gr.Markdown("""
+    # 🎙️ Tamil Audio Transcriber
+    Upload or record your Tamil audio.
+    Get instant transcription 📝, translation 🌍, and deep analysis 📊 in English!
+    """)
+
+    with gr.Row():
+        audio_input = gr.Audio(source="microphone", type="numpy", label="Upload or Record Audio")
+
+    with gr.Row():
+        transcribed_text = gr.Textbox(label="Tamil Transcription")
+        translated_text = gr.Textbox(label="English Translation")
+        analysis_text = gr.Textbox(label="Deeper Analysis")
+
+    submit_btn = gr.Button("🔍 Transcribe & Analyze")
+    submit_btn.click(fn=process_audio, inputs=audio_input, outputs=[transcribed_text, translated_text, analysis_text])
+
+if __name__ == "__main__":
+    demo.launch()
