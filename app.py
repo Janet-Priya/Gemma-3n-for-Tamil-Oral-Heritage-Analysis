@@ -147,7 +147,7 @@ iface = gr.Interface(
     description="Upload a Tamil audio file. Get transcription, English translation, and deeper content analysis."
 )
 
-iface.launch(server_name="0.0.0.0", server_port=7860)
+iface.launch(share=True)
 
 
 
