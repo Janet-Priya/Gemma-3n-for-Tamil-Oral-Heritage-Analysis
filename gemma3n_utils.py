@@ -240,60 +240,47 @@ def summarize_text(text):
 '''
 
 
-
-from unsloth import FastModel
-from transformers import pipeline
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+import torch
+import torchaudio
+import tempfile
 import librosa
+import soundfile as sf
 
+# Load Whisper model for Tamil audio transcription
+asr = pipeline("automatic-speech-recognition", model="openai/whisper-small", device=0 if torch.cuda.is_available() else -1)
 
-# === GEMMA LOADER === #
-def load_gemma_model(
-    model_name="unsloth/gemma-3n-E4B-it",
-    dtype=None,
-    max_seq_length=1024,
-    load_in_4bit=True,
-    full_finetuning=False,
-):
-    model, tokenizer = FastModel.from_pretrained(
-        model_name=model_name,
-        dtype=dtype,
-        max_seq_length=max_seq_length,
-        load_in_4bit=load_in_4bit,
-        full_finetuning=full_finetuning,
-    )
-    return model, tokenizer
+# Load Gemma 3n model for summarization
+tokenizer = AutoTokenizer.from_pretrained("google/gemma-1.1-2b-it")
+model = AutoModelForCausalLM.from_pretrained("google/gemma-1.1-2b-it", torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32)
+model.eval()
 
+if torch.cuda.is_available():
+    model = model.to("cuda")
 
-# === AUDIO RESAMPLER === #
-def resample_audio(dataset_sample, target_sr=16000):
-    audio_array = dataset_sample['audio']['array']
-    original_sr = dataset_sample['audio']['sampling_rate']
-    resampled_audio = librosa.resample(audio_array, orig_sr=original_sr, target_sr=target_sr)
+# Transcription function
+def transcribe_audio(audio_bytes):
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tmp:
+        tmp.write(audio_bytes)
+        tmp.flush()
 
-    print(f"Original Sample Rate: {original_sr}")
-    print(f"Resampled Audio Shape: {resampled_audio.shape}")
-    
-    return resampled_audio
+        audio_array, sr = torchaudio.load(tmp.name)
+        audio_array = audio_array[0].numpy()  # Convert from tensor to numpy
+        audio_16k = librosa.resample(audio_array, orig_sr=sr, target_sr=16000)
 
+        transcription = asr(audio_16k)
+        return transcription["text"]
 
-# === WHISPER ASR === #
-def transcribe_audio(audio_array, whisper_model="openai/whisper-small", device=-1):
-    asr = pipeline("automatic-speech-recognition", model=whisper_model, device=device)
-    result = asr(audio_array)
-    transcript = result['text']
-    
-    print("ASR Transcript:", transcript)
-    return transcript
+# Summarization function
+def summarize_text(text):
+    prompt = f"தமிழில் இந்த உரையை சுருக்கவும்:\n{text}\n\nசுருக்கம்:"
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024)
 
+    if torch.cuda.is_available():
+        inputs = {k: v.to("cuda") for k, v in inputs.items()}
 
-# === FUTURE: Summarize Transcript using Gemma === #
-def summarize_transcript(transcript, model, tokenizer):
-    # Placeholder for when you plug Gemma for summarization
-    prompt = f"Summarize the following Tamil text:\n\n{transcript}"
-    
-    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-    outputs = model.generate(**inputs, max_new_tokens=100)
+    with torch.no_grad():
+        outputs = model.generate(**inputs, max_new_tokens=150, do_sample=True, temperature=0.7)
     
     summary = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    print("Summary:", summary)
-    return summary
+    return summary.replace(prompt, "").strip()
