@@ -22,53 +22,52 @@ iface = gr.Interface(
 
 iface.launch(server_name="0.0.0.0", server_port=7860)
 '''
-
-# app.py
+#app.py
 import gradio as gr
 from gemma3n_utils import transcribe_audio, translate_to_english, deeper_analysis
-import torch
-import torchaudio
-import tempfile
+import os
 
 def process_audio(audio):
-    print(f"Received audio input: {audio}")
-
+    # Save the audio temporarily
+    audio_path = "temp_audio.wav"
     if isinstance(audio, tuple):
-        # Microphone input: (sample_rate, numpy_array)
-        sample_rate, data = audio
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-        torchaudio.save(temp_file.name, torch.tensor(data).unsqueeze(0), sample_rate=sample_rate)
-        audio_path = temp_file.name
-    elif isinstance(audio, str):
-        # File upload
-        audio_path = audio
-    else:
-        raise ValueError("Unsupported audio input type")
+        audio = audio[0]  # only keep the numpy array if tuple
 
-    print(f"Transcribing: {audio_path}")
-    transcription = transcribe_audio(audio_path)
-    translated = translate_to_english(transcription)
-    analysis = deeper_analysis(translated)
+    import soundfile as sf
+    sf.write(audio_path, audio, samplerate=16000)
 
-    return transcription, translated, analysis
+    # Transcribe Tamil audio
+    tamil_text = transcribe_audio(audio_path)
 
-with gr.Blocks(title="Tamil Audio Transcriber & Translator") as demo:
-    gr.Markdown("""
-    # 🎙️ Tamil Audio Transcriber
-    Upload or record your Tamil audio.
-    Get instant transcription 📝, translation 🌍, and deep analysis 📊 in English!
-    """)
+    # Translate to English
+    english_translation = translate_to_english(tamil_text)
+
+    # Perform deeper analysis in English
+    analysis = deeper_analysis(english_translation)
+
+    # Clean up
+    os.remove(audio_path)
+
+    return tamil_text, english_translation, analysis
+
+with gr.Blocks() as app:
+    gr.Markdown("# 🗣️ Tamil Audio Transcriber, Translator & Analyzer")
 
     with gr.Row():
-        audio_input = gr.Audio(source="microphone", type="numpy", label="Upload or Record Audio")
+        with gr.Column():
+            audio_input = gr.Audio(type="numpy", label="🎤 Upload or Record Audio")
+            submit_button = gr.Button("🔍 Analyze")
 
-    with gr.Row():
-        transcribed_text = gr.Textbox(label="Tamil Transcription")
-        translated_text = gr.Textbox(label="English Translation")
-        analysis_text = gr.Textbox(label="Deeper Analysis")
+        with gr.Column():
+            tamil_output = gr.Textbox(label="📝 Transcribed Tamil Text")
+            english_output = gr.Textbox(label="🌐 English Translation")
+            analysis_output = gr.Textbox(label="📊 Deeper English Analysis")
 
-    submit_btn = gr.Button("🔍 Transcribe & Analyze")
-    submit_btn.click(fn=process_audio, inputs=audio_input, outputs=[transcribed_text, translated_text, analysis_text])
+    submit_button.click(
+        fn=process_audio,
+        inputs=[audio_input],
+        outputs=[tamil_output, english_output, analysis_output]
+    )
 
-if __name__ == "__main__":
-    demo.launch()
+app.launch()
+
