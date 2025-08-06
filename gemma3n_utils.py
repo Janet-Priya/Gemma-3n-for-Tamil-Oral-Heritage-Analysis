@@ -47,7 +47,7 @@ def deeper_analysis(text):
         outputs = model.generate(**inputs, max_new_tokens=512)
     return tokenizer.decode(outputs[0], skip_special_tokens=True).replace(prompt, "").strip()
 
-'''
+
 # gemma3n_utils.py
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq, pipeline
 import torch
@@ -80,7 +80,51 @@ def deeper_analysis(english_text):
     # Dummy placeholder for NLP techniques (summarization, emotion, sentiment, etc.)
     print(f"Analyzing: {english_text}")
     return f"[Analysis] This appears to be a sample Tamil audio about literature or conversation."
+'''
+# gemma3n_utils.py
+from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq, pipeline
+import torch
+import torchaudio
 
+# Load models once
+processor = AutoProcessor.from_pretrained("openai/whisper-small")
+model = AutoModelForSpeechSeq2Seq.from_pretrained("openai/whisper-small")
+model.to("cuda" if torch.cuda.is_available() else "cpu")
+
+device = 0 if torch.cuda.is_available() else -1
+pipe = pipeline(
+    task="automatic-speech-recognition",
+    model=model,
+    tokenizer=processor.tokenizer,
+    feature_extractor=processor.feature_extractor,
+    device=device,
+)
+
+def transcribe_audio(audio_np, sample_rate):
+    print("Transcribing uploaded audio")
+    waveform = torch.tensor(audio_np).float()
+    if waveform.ndim == 1:
+        waveform = waveform.unsqueeze(0)
+    resampled = torchaudio.functional.resample(waveform, orig_freq=sample_rate, new_freq=16000)
+    temp_file = "/tmp/temp.wav"
+    torchaudio.save(temp_file, resampled, 16000)
+    result = pipe(temp_file)
+    return result["text"]
+
+def translate_to_english(tamil_text):
+    print(f"Translating: {tamil_text}")
+    # Replace with your translation model or API
+    return f"[Translated to English] {tamil_text}"
+
+def deeper_analysis(english_text):
+    print(f"Analyzing: {english_text}")
+    # You can add keyword extraction, sentiment, tone, etc.
+    return (
+        f"[Deeper Analysis]\n"
+        f"- Summary: This might be a Tamil literature excerpt or conversation.\n"
+        f"- Sentiment: Neutral or descriptive tone.\n"
+        f"- Insight: Rich in cultural context, potentially poetic."
+    )
 
 
 
