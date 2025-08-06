@@ -123,7 +123,6 @@ with gr.Blocks(css=custom_css) as interface:
     submit_btn.click(fn=process_audio, inputs=[audio_input], outputs=[trans_output, trans_en_output, analysis_output])
 
 interface.launch(share=True)
-'''
 
 # app.py
 import gradio as gr
@@ -148,6 +147,50 @@ iface = gr.Interface(
 )
 
 iface.launch(share=True)
+'''
+
+import gradio as gr
+import os
+from gemma3n_utils import transcribe_audio, translate_to_english, deeper_analysis
+
+def process_audio(audio_file):
+    if audio_file is None:
+        return "Please upload an audio file.", "", ""
+
+    # Save the uploaded file to a temporary location
+    audio_path = "temp_audio.wav"
+    audio_file.save(audio_path)
+
+    # Transcribe
+    transcription = transcribe_audio(audio_path)
+
+    # Translate
+    translation = translate_to_english(transcription)
+
+    # Analyze
+    analysis = deeper_analysis(translation)
+
+    # Clean up temp file
+    os.remove(audio_path)
+
+    return transcription, translation, analysis
+
+# Gradio Interface
+with gr.Blocks(theme=gr.themes.Soft()) as demo:
+    gr.Markdown("<h1 style='text-align: center;'>🎙️ Tamil Audio Summarizer & Translator</h1>")
+
+    with gr.Row():
+        audio_input = gr.Audio(label="Upload Tamil Audio File", type="file")
+        submit_btn = gr.Button("Submit")
+
+    with gr.Row():
+        tamil_output = gr.Textbox(label="📝 Tamil Transcription")
+        english_output = gr.Textbox(label="🌐 English Translation")
+        analysis_output = gr.Textbox(label="🔍 Deeper Analysis")
+
+    submit_btn.click(fn=process_audio, inputs=[audio_input], outputs=[tamil_output, english_output, analysis_output])
+
+demo.launch()
 
 
 
