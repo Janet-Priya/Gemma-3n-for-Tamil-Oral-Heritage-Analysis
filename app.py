@@ -48,9 +48,7 @@ demo = gr.Interface(
 
 if __name__ == "__main__":
     demo.launch(share=True)
-'''
-
-
+    
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 import torch
 import torchaudio
@@ -95,3 +93,33 @@ def summarize_text(text):
     
     summary = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return summary.replace(prompt, "").strip()
+'''
+
+import gradio as gr
+from gemma3n_utils import transcribe_audio, summarize_text
+
+def process_audio(audio):
+    if audio is None:
+        return "⚠️ Please upload or record an audio file.", ""
+    
+    with open(audio, "rb") as f:
+        audio_bytes = f.read()
+
+    transcription = transcribe_audio(audio_bytes)
+    summary = summarize_text(transcription)
+    return transcription, summary
+
+with gr.Blocks() as demo:
+    gr.Markdown("## 🧠 Tamil Audio Transcription & Summarization App\nUpload or record your Tamil audio and let Gemma do the rest!")
+
+    with gr.Row():
+        audio_input = gr.Audio(source="upload", type="filepath", label="🎙️ Upload or Record Audio", interactive=True)
+    
+    transcribed_output = gr.Textbox(label="📝 Transcription", lines=6)
+    summary_output = gr.Textbox(label="📄 Summarization", lines=4)
+
+    transcribe_button = gr.Button("✨ Transcribe & Summarize")
+
+    transcribe_button.click(fn=process_audio, inputs=audio_input, outputs=[transcribed_output, summary_output])
+
+demo.launch(share=True)
