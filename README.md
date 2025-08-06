@@ -1,1 +1,68 @@
-# Tamil-Literature-ASR-summarizer
+# Tamil-Literature-translate-summarize
+This project is a foundational prototype that demonstrates the use of artificial intelligence for preserving and analyzing Tamil oral literature. It enables users to upload Tamil audio recordings, automatically transcribe them, translate the transcription into English, and generate a deeper literary or contextual analysis of the content.
+
+---
+
+##  Project Objective
+
+The goal of this project is to create a base system that can support the preservation of Tamil oral heritage by:
+- Transcribing spoken Tamil into written text
+- Translating Tamil content into English
+- Offering deeper insights and meaning through contextual analysis and sometimes the hidden meaning behind it
+
+This tool can serve as a digital assistant for linguists, researchers, and cultural preservationists working with oral literature.
+
+---
+
+##  Project Structure
+Tamil-Literature-summarize/
+│
+├── app.py # Gradio application entry point
+├── gemma3n_utils.py # Core logic for transcription, translation, and analysis
+├── requirements.txt # Python dependencies
+├── index.html # (Optional) Custom landing page for hosting
+└── README.md # Project documentation
+
+yaml
+Copy
+
+
+
+---
+
+## ⚙️ Features
+
+- ** Tamil Audio Transcription**: Converts spoken Tamil audio into text using deep learning.
+- ** English Translation**: Automatically translates the transcription into English.
+- ** Deeper Analysis**: Generates an analytical summary to explore the meaning or message behind the content.
+- **Supports**: Most of the Tamil dialects and provides indepth analysis of the Tamil literature
+
+---
+
+## 🧠 Model Information
+
+The project uses the `google/gemma-1.1-2b-it` language model for all tasks:
+- Implemented via Hugging Face Transformers and Gradio
+- Model handles multilingual tasks including instruction-following, summarization, and translation
+
+---
+
+##  Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Janet-Priya/Tamil-Literature-summarize.git
+cd Tamil-Literature-summarize
+```
+## Sample Use Case
+Recording an elder reciting a Tamil poem or story
+
+Uploading the audio to this tool
+
+Receiving a transcription, English translation, and a concise analytical summary
+
+Helping researchers understand oral literature without requiring deep knowledge of Tamil
+
+
+
