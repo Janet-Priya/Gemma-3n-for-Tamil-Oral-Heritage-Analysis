@@ -289,14 +289,14 @@ def summarize_text(text):
 
 
 # gemma3n_utils.py
-from transformers import AutoProcessor, AutoModelForSeq2SeqLM
+from transformers import AutoProcessor,AutoModelForCausalLM
 import torch
 import torchaudio
 import os
 
 # Load the Gemma model and processor (adjust to your actual model path)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = AutoModelForSeq2SeqLM.from_pretrained("google/gemma-1.1-2b-it", torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32)
+model = AutoModelForCausalLM.from_pretrained("google/gemma-1.1-2b-it", torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32)
 processor = AutoProcessor.from_pretrained("google/gemma-1.1-2b-it")
 model.to(device)
 
