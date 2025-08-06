@@ -1,4 +1,4 @@
-'''# app.py
+# app.py
 import gradio as gr
 from gemma3n_utils import transcribe_audio, translate_to_english, deeper_analysis
 
@@ -71,7 +71,7 @@ with gr.Blocks() as app:
 
 app.launch()
 
-
+'''
 
 # app.py
 import gradio as gr
@@ -147,7 +147,6 @@ iface = gr.Interface(
 )
 
 iface.launch(share=True)
-'''
 
 import gradio as gr
 import os
@@ -194,6 +193,6 @@ demo.launch()
 
 
 
-
+'''
 
 
