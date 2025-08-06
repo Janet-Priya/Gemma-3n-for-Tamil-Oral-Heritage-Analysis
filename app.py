@@ -95,12 +95,12 @@ def summarize_text(text):
     return summary.replace(prompt, "").strip()
 '''
 
-import gradio as gr
+'''import gradio as gr
 from gemma3n_utils import transcribe_audio, summarize_text
 
 def process_audio(audio):
     if audio is None:
-        return "⚠️ Please upload or record an audio file.", ""
+        return "Please upload or record an audio file.", ""
     
     with open(audio, "rb") as f:
         audio_bytes = f.read()
@@ -111,18 +111,42 @@ def process_audio(audio):
 
 with gr.Blocks() as demo:
     gr.Markdown("""
-    ## 🧠 Tamil Audio Transcription & Summarization App  
+    ## Tamil Audio Transcription & Summarization App  
     Upload your Tamil audio and let the model transcribe and summarize it!
     """)
 
     with gr.Row():
         audio_input = gr.Audio(type="filepath", label="🎙️ Upload Audio", interactive=True)
 
-    transcribed_output = gr.Textbox(label="📝 Transcription", lines=6)
-    summary_output = gr.Textbox(label="📄 Summarization", lines=4)
+    transcribed_output = gr.Textbox(label="Transcription", lines=6)
+    summary_output = gr.Textbox(label="Summarization", lines=4)
 
     transcribe_button = gr.Button("✨ Transcribe & Summarize")
 
     transcribe_button.click(fn=process_audio, inputs=audio_input, outputs=[transcribed_output, summary_output])
 
 demo.launch()
+'''
+# app.py
+import gradio as gr
+from gemma3n_utils import transcribe_audio, translate_to_english, deeper_analysis
+
+def process_audio(audio_path):
+    transcription = transcribe_audio(audio_path)
+    translation = translate_to_english(transcription)
+    analysis = deeper_analysis(translation)
+    return transcription, translation, analysis
+
+iface = gr.Interface(
+    fn=process_audio,
+    inputs=gr.Audio(type="filepath", label="🎙️ Upload Audio"),
+    outputs=[
+        gr.Textbox(label=" Tamil Transcription"),
+        gr.Textbox(label=" English Translation"),
+        gr.Textbox(label=" Deeper Analysis")
+    ],
+    title="Tamil Audio Transcriber & Analyzer",
+    description="Upload a Tamil audio file. Get transcription, English translation, and deeper content analysis."
+)
+
+iface.launch(server_name="0.0.0.0", server_port=7860)
