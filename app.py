@@ -110,11 +110,14 @@ def process_audio(audio):
     return transcription, summary
 
 with gr.Blocks() as demo:
-    gr.Markdown("## 🧠 Tamil Audio Transcription & Summarization App\nUpload or record your Tamil audio and let the model transcribe and summarize it!")
+    gr.Markdown("""
+    ## 🧠 Tamil Audio Transcription & Summarization App  
+    Upload your Tamil audio and let the model transcribe and summarize it!
+    """)
 
     with gr.Row():
-        audio_input = gr.Audio(source="upload", type="filepath", label="🎙️ Upload or Record Audio", interactive=True)
-    
+        audio_input = gr.Audio(type="filepath", label="🎙️ Upload Audio", interactive=True)
+
     transcribed_output = gr.Textbox(label="📝 Transcription", lines=6)
     summary_output = gr.Textbox(label="📄 Summarization", lines=4)
 
