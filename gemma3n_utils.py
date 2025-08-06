@@ -1,4 +1,4 @@
-'''# gemma3n_utils.py
+# gemma3n_utils.py
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 import torch
@@ -80,7 +80,7 @@ def deeper_analysis(english_text):
     # Dummy placeholder for NLP techniques (summarization, emotion, sentiment, etc.)
     print(f"Analyzing: {english_text}")
     return f"[Analysis] This appears to be a sample Tamil audio about literature or conversation."
-
+'''
 # gemma3n_utils.py
 from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq, pipeline
 import torch
@@ -129,7 +129,7 @@ def deeper_analysis(english_text):
 
 '''
 
-
+'''
 # gemma3n_utils.py
 from transformers import AutoProcessor, AutoModelForCausalLM
 import torch
@@ -170,5 +170,26 @@ def deeper_analysis(text):
         outputs = model.generate(**inputs, max_new_tokens=512)
     analysis = processor.decode(outputs[0], skip_special_tokens=True)
     return analysis
+'''
+'''
+from functools import lru_cache
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
+@lru_cache(maxsize=1)
+def load_models():
+    whisper_pipe = pipeline("automatic-speech-recognition", model="openai/whisper-small", device=0)
+    tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-ta-en")
+    translation_model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-ta-en").to("cuda")
+    return whisper_pipe, tokenizer, translation_model
 
+def transcribe_audio(audio_np, sample_rate):
+    whisper_pipe, _, _ = load_models()
+    return whisper_pipe(audio_np, sampling_rate=sample_rate)["text"]
+
+def translate_to_english(tamil_text):
+    _, tokenizer, translation_model = load_models()
+    inputs = tokenizer(tamil_text, return_tensors="pt", truncation=True).to("cuda")
+    outputs = translation_model.generate(**inputs, max_new_tokens=200)
+    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+'''
